@@ -1,0 +1,16 @@
+---
+
+jenkins:
+  shell: /bin/bash
+  user: jenkins
+  group: jenkins
+  home: /home/jenkins
+
+docker:
+  group: docker
+
+git:
+  repo: "https://github.com/mjstealey/jenkins-nginx-docker"
+  dest: "{{ jenkins.home }}/jenkins-nginx-docker"
+
+...

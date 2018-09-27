@@ -1,0 +1,89 @@
+---
+
+# Requires ansible>=2.3.0.
+
+- hosts: jenkins_targets
+  vars_files:
+    - variables/jenkins-setup.yml
+  become: yes
+  tasks:
+  - name: update all
+    yum:
+    args:
+      name: '*'
+      state: latest
+      skip_broken: yes
+
+  - name: install prereqs
+    yum:
+    args:
+      name:
+        - yum-utils
+        - wget
+        - git
+
+    # Bug in ansible getent module.
+    # Group may already exist externally.
+  - name: does {{ jenkins.group }} group already exist?
+    shell: "getent group {{ jenkins.group }}"
+    ignore_errors: yes
+    register: getent_jenkins_group
+    args:
+      executable: "{{ jenkins.shell }}"
+
+  - name: create group {{ jenkins.group }} if not present
+    group:
+    when: jenkins.group not in getent_jenkins_group.stdout
+    args:
+      name: "{{ jenkins.group }}"
+      state: present
+
+    # Bug in ansible getent module for external user.
+    # User may already exist externally.
+  - name: does user {{ jenkins.user }} already exist?
+    shell: "getent passwd {{ jenkins.user }}"
+    ignore_errors: yes
+    register: getent_jenkins_user
+    args:
+      executable: "{{ jenkins.shell }}"
+
+    # Bug in user module state option.
+  - name: create user {{ jenkins.user }} if not present
+    user:
+    when: jenkins.user not in getent_jenkins_user.stdout
+    args:
+      name: "{{ jenkins.user }}"
+      home: "{{ jenkins.home }}"
+      group: "{{ jenkins.group }}"
+      system: yes
+      shell: "{{ jenkins.shell }}"
+      state: present
+
+    # Bug in ansible getent module.
+    # Group may already exist externally.
+    # Don't ignore errors this time.
+  - name: does group {{ docker.group }} already exist?
+    shell: "getent group {{ docker.group }}"
+    register: getent_docker_group
+    args:
+      executable: "{{ jenkins.shell }}"
+
+  - name: adding user {{ jenkins.user }} to {{ docker.group }} group
+    user:
+    when: jenkins.user not in getent_docker_group.stdout
+    args:
+      name: "{{ jenkins.user }}"
+      groups: "{{ docker.group }}"
+      append: yes
+
+  - name: "{{ jenkins.user }} user tasks"
+    block:
+      - name: checkout {{ git.dest }}
+        git:
+        args:
+          repo: "{{ git.repo }}"
+          dest: "{{ git.dest }}"
+    become: true
+    become_user: "{{ jenkins.user }}"
+
+...
