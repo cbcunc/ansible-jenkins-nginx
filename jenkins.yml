@@ -76,14 +76,14 @@
       groups: "{{ docker.group }}"
       append: yes
 
-  - name: "{{ jenkins.user }} user tasks"
-    block:
+
+  - block:
       - name: checkout {{ git.dest }}
         git:
         args:
           repo: "{{ git.repo }}"
           dest: "{{ git.dest }}"
-    become: true
+    become: yes
     become_user: "{{ jenkins.user }}"
 
 ...
